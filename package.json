@@ -1,0 +1,36 @@
+{
+  "name": "crypto-flow",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CRYPTO FLOW — a premium 2D endless runner where a crypto trader outruns the Bear Market.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "sync": "npm run build && npx cap sync"
+  },
+  "dependencies": {
+    "@capacitor/app": "^7.0.1",
+    "@capacitor/core": "^7.2.0",
+    "@capacitor/haptics": "^7.0.1",
+    "@capacitor/preferences": "^7.0.1",
+    "@capacitor/status-bar": "^7.0.1",
+    "firebase": "^11.8.0",
+    "framer-motion": "^12.15.0",
+    "next": "^15.3.3",
+    "phaser": "^3.90.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "zustand": "^5.0.5"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.2.0",
+    "@tailwindcss/postcss": "^4.1.7",
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "tailwindcss": "^4.1.7",
+    "typescript": "^5.8.3"
+  }
+}
