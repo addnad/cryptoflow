@@ -1,4 +1,9 @@
-import type { EventResolution, HudSnapshot, RunStats } from "@/types";
+import type {
+  EventResolution,
+  HudSnapshot,
+  PlayerAction,
+  RunStats,
+} from "@/types";
 
 /**
  * Typed bridge between the Phaser world and React. Phaser emits gameplay
@@ -9,6 +14,16 @@ export interface GameEvents {
   /** Phaser → React */
   hud: HudSnapshot;
   resolution: EventResolution;
+  /** An event gate entered telegraph range — HUD shows the banner. */
+  telegraph: {
+    title: string;
+    description: string;
+    glyph: string;
+    tintCss: string;
+    action: PlayerAction;
+    /** Show the verb hint (early difficulty only). */
+    hint: boolean;
+  };
   environment: { name: string; index: number };
   runOver: RunStats;
   caught: undefined;
@@ -16,6 +31,8 @@ export interface GameEvents {
   start: undefined;
   pause: undefined;
   resume: undefined;
+  /** Player gave up from the pause sheet — end the run as a quit. */
+  abort: undefined;
 }
 
 type Handler<T> = (payload: T) => void;

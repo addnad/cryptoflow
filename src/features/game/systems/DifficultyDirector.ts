@@ -39,8 +39,8 @@ export class DifficultyDirector {
   }
 
   weightForTier(tier: EventTier): number {
-    const start = GAME.DIFFICULTY.TIER_WEIGHTS_START[tier - 1];
-    const end = GAME.DIFFICULTY.TIER_WEIGHTS_END[tier - 1];
+    const start = GAME.DIFFICULTY.TIER_WEIGHTS_START[tier - 1] ?? 0;
+    const end = GAME.DIFFICULTY.TIER_WEIGHTS_END[tier - 1] ?? 0;
     return lerp(start, end, this.t01);
   }
 }

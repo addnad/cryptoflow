@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 
 interface ScreenProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   /** Push direction from the navigation store (1 = deeper, -1 = back). */
   direction?: 1 | -1;
   className?: string;

@@ -8,7 +8,7 @@ import { GAME } from "../engine/config";
  * flow has to be continuously earned.
  */
 export class MomentumSystem {
-  private momentum = GAME.MOMENTUM.START;
+  private momentum: number = GAME.MOMENTUM.START;
 
   update(dtSeconds: number): void {
     this.momentum = clamp(

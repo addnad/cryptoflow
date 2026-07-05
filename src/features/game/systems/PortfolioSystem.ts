@@ -7,8 +7,8 @@ import { GAME } from "../engine/config";
  * delete you.
  */
 export class PortfolioSystem {
-  private valueNow = GAME.PORTFOLIO.START;
-  private peakValue = GAME.PORTFOLIO.START;
+  private valueNow: number = GAME.PORTFOLIO.START;
+  private peakValue: number = GAME.PORTFOLIO.START;
   private lastDelta = 0;
 
   update(dtSeconds: number, momentumT: number): void {
