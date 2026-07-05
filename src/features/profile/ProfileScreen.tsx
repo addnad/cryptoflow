@@ -15,10 +15,13 @@ import {
   formatMoney,
 } from "@/lib/utils/format";
 import { ACHIEVEMENTS } from "@/features/achievements/definitions";
+import { linkGuestToGoogle } from "@/features/auth/sessionController";
+import { GuestUpgradeCard } from "./GuestUpgradeCard";
 import { levelFromXp } from "./leveling";
 
 export function ProfileScreen({ direction }: { direction: 1 | -1 }) {
   const profile = useSession((s) => s.profile);
+  const user = useSession((s) => s.user);
   const [unlockedCount, setUnlockedCount] = useState(0);
 
   useEffect(() => {
@@ -64,6 +67,12 @@ export function ProfileScreen({ direction }: { direction: 1 | -1 }) {
             <ProgressBar fraction={lvl.fraction} />
           </div>
         </motion.div>
+
+        {user?.isAnonymous && (
+          <motion.div variants={staggerItem}>
+            <GuestUpgradeCard onLink={linkGuestToGoogle} />
+          </motion.div>
+        )}
 
         {/* stats */}
         <motion.div variants={staggerItem} className="grid grid-cols-2 gap-2.5">

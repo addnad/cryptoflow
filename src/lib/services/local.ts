@@ -116,6 +116,18 @@ export function createLocalServices(): BackendServices {
         setUser(user);
         return user;
       },
+      async linkGoogle() {
+        if (!current) throw new Error("no-current-user");
+        // Upgrade in place: same uid keeps the existing profile + progress.
+        const linked: AuthUser = {
+          ...current,
+          provider: "google",
+          isAnonymous: false,
+          email: "trader@local.dev",
+        };
+        setUser(linked);
+        return linked;
+      },
       async signOutUser() {
         setUser(null);
       },

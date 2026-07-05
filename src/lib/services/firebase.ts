@@ -1,7 +1,10 @@
 import {
   GoogleAuthProvider,
+  linkWithCredential,
+  linkWithPopup,
   onAuthStateChanged,
   signInAnonymously,
+  signInWithCredential,
   signInWithPopup,
   signInWithRedirect,
   signOut,
@@ -32,8 +35,41 @@ import type {
   RunStats,
 } from "@/types";
 import { isoWeekKey } from "@/lib/utils/time";
+import { isNative } from "@/lib/native";
 import { getDb, getFirebaseAuth } from "@/lib/firebase/client";
 import type { BackendServices } from "./types";
+
+/**
+ * Obtain a Google OAuth credential for the Firebase JS SDK.
+ *
+ * In a native Capacitor WebView `signInWithPopup` cannot open a browser
+ * window, so we drive the platform's native Google Sign-In through
+ * @capacitor-firebase/authentication and hand the resulting id token to the
+ * JS SDK (which owns the auth state Firestore reads). On the web this
+ * returns null and callers fall back to the popup/redirect flow.
+ */
+async function nativeGoogleCredential(): Promise<
+  ReturnType<typeof GoogleAuthProvider.credential> | null
+> {
+  if (!isNative()) return null;
+  const { FirebaseAuthentication } = await import(
+    "@capacitor-firebase/authentication"
+  );
+  const result = await FirebaseAuthentication.signInWithGoogle();
+  const idToken = result.credential?.idToken;
+  const accessToken = result.credential?.accessToken;
+  if (!idToken) throw new Error("google-signin-cancelled");
+  return GoogleAuthProvider.credential(idToken, accessToken);
+}
+
+/** Normalise Firebase's link/credential collision codes. */
+function mapAuthError(err: unknown): Error {
+  const code = (err as { code?: string }).code ?? "";
+  if (code.includes("credential-already-in-use") || code.includes("email-already-in-use")) {
+    return new Error("credential-in-use");
+  }
+  return err instanceof Error ? err : new Error(String(err));
+}
 
 /**
  * Firebase backend adapter — Auth + Firestore.
@@ -81,6 +117,11 @@ export function createFirebaseServices(): BackendServices {
       },
       async signInWithGoogle() {
         const auth = getFirebaseAuth();
+        const nativeCredential = await nativeGoogleCredential();
+        if (nativeCredential) {
+          const cred = await signInWithCredential(auth, nativeCredential);
+          return toAuthUser(cred.user);
+        }
         const provider = new GoogleAuthProvider();
         try {
           const cred = await signInWithPopup(auth, provider);
@@ -99,7 +140,27 @@ export function createFirebaseServices(): BackendServices {
         const cred = await signInAnonymously(getFirebaseAuth());
         return toAuthUser(cred.user);
       },
+      async linkGoogle() {
+        const auth = getFirebaseAuth();
+        const user = auth.currentUser;
+        if (!user) throw new Error("no-current-user");
+        try {
+          const nativeCredential = await nativeGoogleCredential();
+          const result = nativeCredential
+            ? await linkWithCredential(user, nativeCredential)
+            : await linkWithPopup(user, new GoogleAuthProvider());
+          return toAuthUser(result.user);
+        } catch (err) {
+          throw mapAuthError(err);
+        }
+      },
       async signOutUser() {
+        if (isNative()) {
+          const { FirebaseAuthentication } = await import(
+            "@capacitor-firebase/authentication"
+          );
+          await FirebaseAuthentication.signOut().catch(() => undefined);
+        }
         await signOut(getFirebaseAuth());
       },
     },

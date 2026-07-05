@@ -11,6 +11,14 @@ const config: CapacitorConfig = {
   android: {
     allowMixedContent: false,
   },
+  plugins: {
+    // Native Google Sign-In returns a credential that the Firebase JS SDK
+    // consumes (skipNativeAuth), so a single JS auth state backs Firestore.
+    FirebaseAuthentication: {
+      skipNativeAuth: true,
+      providers: ["google.com"],
+    },
+  },
 };
 
 export default config;

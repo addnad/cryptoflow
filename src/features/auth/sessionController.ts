@@ -48,6 +48,19 @@ export async function signInAsGuest(): Promise<void> {
   await backend.auth.signInAsGuest();
 }
 
+/**
+ * Upgrade the signed-in guest to a Google account. The uid is preserved so
+ * the profile carries over; we optimistically flip the local session's
+ * provider flags and let the auth listener reconcile. Throws
+ * "credential-in-use" when the Google account is already taken.
+ */
+export async function linkGuestToGoogle(): Promise<void> {
+  const backend = await services();
+  const linked = await backend.auth.linkGoogle();
+  const { profile } = useSession.getState();
+  if (profile) useSession.getState().setReady(linked, profile);
+}
+
 export async function signOutUser(): Promise<void> {
   const backend = await services();
   await backend.auth.signOutUser();

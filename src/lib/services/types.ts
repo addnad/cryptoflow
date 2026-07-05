@@ -20,6 +20,13 @@ export interface AuthService {
   onChange(cb: (user: AuthUser | null) => void): () => void;
   signInWithGoogle(): Promise<AuthUser>;
   signInAsGuest(): Promise<AuthUser>;
+  /**
+   * Upgrade the current anonymous account to Google in place. The uid is
+   * preserved, so the player's existing profile, stats and unlocks carry
+   * over. Throws "credential-in-use" if the Google account already belongs
+   * to another player.
+   */
+  linkGoogle(): Promise<AuthUser>;
   signOutUser(): Promise<void>;
 }
 

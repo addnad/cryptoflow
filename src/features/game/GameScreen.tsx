@@ -8,6 +8,7 @@ import { Button } from "@/components/Button";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { useNavigation } from "@/stores/navigation";
 import { useRun } from "@/stores/run";
+import { onAppStateChange } from "@/lib/native";
 import { applyRunResults, type RunOutcome } from "@/features/profile/progression";
 import { formatCompact, formatDistance, formatMoney } from "@/lib/utils/format";
 import type { RunStats } from "@/types";
@@ -67,6 +68,19 @@ function GameInstance({ onRetry }: { onRetry: () => void }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bus]);
+
+  // Pause an active run when the app is backgrounded (or the tab hidden) so
+  // the trader isn't caught by the bear while the player is away.
+  useEffect(
+    () =>
+      onAppStateChange((isActive) => {
+        if (!isActive && useRun.getState().phase === "running") {
+          bus.emit("pause", undefined);
+          useRun.getState().setPhase("paused");
+        }
+      }),
+    [bus],
+  );
 
   const start = () => {
     bus.emit("start", undefined);

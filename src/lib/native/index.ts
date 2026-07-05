@@ -63,3 +63,25 @@ export function onHardwareBack(handler: () => void): () => void {
     void sub.then((s) => s.remove());
   };
 }
+
+/**
+ * Observe foreground/background transitions. On the web this maps to the
+ * Page Visibility API so a run pauses when the tab is hidden too.
+ * Returns an unsubscribe function.
+ */
+export function onAppStateChange(
+  handler: (isActive: boolean) => void,
+): () => void {
+  if (isNative()) {
+    const sub = App.addListener("appStateChange", ({ isActive }) =>
+      handler(isActive),
+    );
+    return () => {
+      void sub.then((s) => s.remove());
+    };
+  }
+  if (typeof document === "undefined") return () => undefined;
+  const onVisibility = () => handler(document.visibilityState === "visible");
+  document.addEventListener("visibilitychange", onVisibility);
+  return () => document.removeEventListener("visibilitychange", onVisibility);
+}
