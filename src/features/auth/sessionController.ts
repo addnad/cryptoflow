@@ -1,6 +1,6 @@
 import { services } from "@/lib/services";
 import { useSession } from "@/stores/session";
-import type { AuthUser, PlayerProfile } from "@/types";
+import type { AuthUser, PlayerProfile, SocialProvider } from "@/types";
 
 /**
  * Session controller — the only module that mutates the session store.
@@ -43,20 +43,25 @@ export async function signInWithGoogle(): Promise<void> {
   await backend.auth.signInWithGoogle();
 }
 
+export async function signInWithApple(): Promise<void> {
+  const backend = await services();
+  await backend.auth.signInWithApple();
+}
+
 export async function signInAsGuest(): Promise<void> {
   const backend = await services();
   await backend.auth.signInAsGuest();
 }
 
 /**
- * Upgrade the signed-in guest to a Google account. The uid is preserved so
+ * Upgrade the signed-in guest to a social account. The uid is preserved so
  * the profile carries over; we optimistically flip the local session's
  * provider flags and let the auth listener reconcile. Throws
- * "credential-in-use" when the Google account is already taken.
+ * "credential-in-use" when that account is already taken.
  */
-export async function linkGuestToGoogle(): Promise<void> {
+export async function linkGuestTo(provider: SocialProvider): Promise<void> {
   const backend = await services();
-  const linked = await backend.auth.linkGoogle();
+  const linked = await backend.auth.linkProvider(provider);
   const { profile } = useSession.getState();
   if (profile) useSession.getState().setReady(linked, profile);
 }

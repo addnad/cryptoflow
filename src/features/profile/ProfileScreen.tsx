@@ -15,7 +15,7 @@ import {
   formatMoney,
 } from "@/lib/utils/format";
 import { ACHIEVEMENTS } from "@/features/achievements/definitions";
-import { linkGuestToGoogle } from "@/features/auth/sessionController";
+import { linkGuestTo } from "@/features/auth/sessionController";
 import { GuestUpgradeCard } from "./GuestUpgradeCard";
 import { levelFromXp } from "./leveling";
 
@@ -70,7 +70,7 @@ export function ProfileScreen({ direction }: { direction: 1 | -1 }) {
 
         {user?.isAnonymous && (
           <motion.div variants={staggerItem}>
-            <GuestUpgradeCard onLink={linkGuestToGoogle} />
+            <GuestUpgradeCard onLink={linkGuestTo} />
           </motion.div>
         )}
 

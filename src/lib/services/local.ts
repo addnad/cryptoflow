@@ -111,19 +111,24 @@ export function createLocalServices(): BackendServices {
         setUser(user);
         return user;
       },
+      async signInWithApple() {
+        const user = makeUser("apple");
+        setUser(user);
+        return user;
+      },
       async signInAsGuest() {
         const user = makeUser("guest");
         setUser(user);
         return user;
       },
-      async linkGoogle() {
+      async linkProvider(provider) {
         if (!current) throw new Error("no-current-user");
         // Upgrade in place: same uid keeps the existing profile + progress.
         const linked: AuthUser = {
           ...current,
-          provider: "google",
+          provider,
           isAnonymous: false,
-          email: "trader@local.dev",
+          email: provider === "google" ? "trader@local.dev" : null,
         };
         setUser(linked);
         return linked;

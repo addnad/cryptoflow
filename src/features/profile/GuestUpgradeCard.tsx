@@ -3,40 +3,39 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { haptic } from "@/lib/native";
+import type { SocialProvider } from "@/types";
 
 interface GuestUpgradeCardProps {
-  onLink: () => Promise<void>;
+  onLink: (provider: SocialProvider) => Promise<void>;
 }
-
-type Status = "idle" | "busy" | "error";
 
 /**
  * Shown on the profile only while the account is a guest. Links the guest to
- * a Google account in place — progress is preserved because the uid never
- * changes. Surfaces the "already in use" collision so the player understands
- * why the upgrade was refused.
+ * a Google or Apple account in place — progress is preserved because the uid
+ * never changes. Surfaces the "already in use" collision so the player
+ * understands why the upgrade was refused.
  */
 export function GuestUpgradeCard({ onLink }: GuestUpgradeCardProps) {
-  const [status, setStatus] = useState<Status>("idle");
+  const [busy, setBusy] = useState<SocialProvider | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  const link = async () => {
-    setStatus("busy");
+  const link = async (provider: SocialProvider) => {
+    setBusy(provider);
     setMessage(null);
     try {
-      await onLink();
+      await onLink(provider);
       void haptic("success");
       // On success the account is no longer anonymous, so this card unmounts.
     } catch (err) {
       const code = err instanceof Error ? err.message : "";
       setMessage(
         code === "credential-in-use"
-          ? "That Google account is already linked to another trader."
-          : code === "google-signin-cancelled"
+          ? "That account is already linked to another trader."
+          : code === "signin-cancelled"
             ? "Sign-in was cancelled."
             : "Couldn't link right now. Try again.",
       );
-      setStatus("error");
+      setBusy(null);
       void haptic("error");
     }
   };
@@ -57,8 +56,8 @@ export function GuestUpgradeCard({ onLink }: GuestUpgradeCardProps) {
             You&apos;re playing as a guest
           </p>
           <p className="mt-0.5 text-[12.5px] leading-snug text-fog">
-            Link Google to save your progress and play across devices. Your
-            level, coins and unlocks come with you.
+            Link an account to save your progress and play across devices.
+            Your level, coins and unlocks come with you.
           </p>
 
           <AnimatePresence>
@@ -74,21 +73,43 @@ export function GuestUpgradeCard({ onLink }: GuestUpgradeCardProps) {
             )}
           </AnimatePresence>
 
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            disabled={status === "busy"}
-            onClick={() => {
-              void haptic("light");
-              void link();
-            }}
-            className="mt-3 flex h-10 items-center justify-center gap-2 rounded-xl bg-ember px-4 text-[14px] font-semibold text-ink disabled:opacity-50"
-          >
-            <GoogleGlyph />
-            {status === "busy" ? "Linking…" : "Link Google account"}
-          </motion.button>
+          <div className="mt-3 flex flex-col gap-2">
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              disabled={busy !== null}
+              onClick={() => {
+                void haptic("light");
+                void link("google");
+              }}
+              className="flex h-10 items-center justify-center gap-2 rounded-xl bg-ember px-4 text-[14px] font-semibold text-ink disabled:opacity-50"
+            >
+              <GoogleGlyph />
+              {busy === "google" ? "Linking…" : "Link Google account"}
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              disabled={busy !== null}
+              onClick={() => {
+                void haptic("light");
+                void link("apple");
+              }}
+              className="flex h-10 items-center justify-center gap-2 rounded-xl border border-line-strong bg-surface-high px-4 text-[14px] font-semibold text-snow disabled:opacity-50"
+            >
+              <AppleGlyph />
+              {busy === "apple" ? "Linking…" : "Link Apple account"}
+            </motion.button>
+          </div>
         </div>
       </div>
     </div>
+  );
+}
+
+function AppleGlyph() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden fill="currentColor">
+      <path d="M16.36 12.78c.02 2.5 2.19 3.33 2.22 3.34-.02.06-.35 1.2-1.15 2.37-.69 1.02-1.4 2.03-2.53 2.05-1.1.02-1.46-.65-2.72-.65-1.26 0-1.66.63-2.7.67-1.09.04-1.92-1.1-2.62-2.11-1.42-2.07-2.51-5.85-1.05-8.4.72-1.27 2.02-2.07 3.42-2.09 1.07-.02 2.08.72 2.73.72.65 0 1.88-.89 3.17-.76.54.02 2.06.22 3.03 1.64-.08.05-1.81 1.06-1.79 3.16M14.28 5.4c.58-.7.97-1.68.86-2.65-.83.03-1.84.55-2.44 1.25-.54.62-1 1.61-.88 2.56.93.07 1.88-.47 2.46-1.16" />
+    </svg>
   );
 }
 

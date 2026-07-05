@@ -7,6 +7,7 @@ import type {
   LeaderboardEntry,
   PlayerProfile,
   RunStats,
+  SocialProvider,
 } from "@/types";
 
 /**
@@ -19,14 +20,15 @@ export interface AuthService {
   /** Subscribe to auth changes. Fires immediately with current state. */
   onChange(cb: (user: AuthUser | null) => void): () => void;
   signInWithGoogle(): Promise<AuthUser>;
+  signInWithApple(): Promise<AuthUser>;
   signInAsGuest(): Promise<AuthUser>;
   /**
-   * Upgrade the current anonymous account to Google in place. The uid is
-   * preserved, so the player's existing profile, stats and unlocks carry
-   * over. Throws "credential-in-use" if the Google account already belongs
+   * Upgrade the current anonymous account to a social provider in place. The
+   * uid is preserved, so the player's existing profile, stats and unlocks
+   * carry over. Throws "credential-in-use" if that account already belongs
    * to another player.
    */
-  linkGoogle(): Promise<AuthUser>;
+  linkProvider(provider: SocialProvider): Promise<AuthUser>;
   signOutUser(): Promise<void>;
 }
 

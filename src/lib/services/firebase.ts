@@ -1,5 +1,6 @@
 import {
   GoogleAuthProvider,
+  OAuthProvider,
   linkWithCredential,
   linkWithPopup,
   onAuthStateChanged,
@@ -8,6 +9,8 @@ import {
   signInWithPopup,
   signInWithRedirect,
   signOut,
+  type AuthCredential,
+  type AuthProvider,
   type User,
 } from "firebase/auth";
 import {
@@ -33,6 +36,7 @@ import type {
   LeaderboardEntry,
   PlayerProfile,
   RunStats,
+  SocialProvider,
 } from "@/types";
 import { isoWeekKey } from "@/lib/utils/time";
 import { isNative } from "@/lib/native";
@@ -40,35 +44,93 @@ import { getDb, getFirebaseAuth } from "@/lib/firebase/client";
 import type { BackendServices } from "./types";
 
 /**
- * Obtain a Google OAuth credential for the Firebase JS SDK.
+ * Obtain a social OAuth credential from the platform's native sign-in.
  *
  * In a native Capacitor WebView `signInWithPopup` cannot open a browser
- * window, so we drive the platform's native Google Sign-In through
+ * window, so we drive the platform sign-in through
  * @capacitor-firebase/authentication and hand the resulting id token to the
  * JS SDK (which owns the auth state Firestore reads). On the web this
  * returns null and callers fall back to the popup/redirect flow.
  */
-async function nativeGoogleCredential(): Promise<
-  ReturnType<typeof GoogleAuthProvider.credential> | null
-> {
+async function nativeCredential(
+  provider: SocialProvider,
+): Promise<AuthCredential | null> {
   if (!isNative()) return null;
   const { FirebaseAuthentication } = await import(
     "@capacitor-firebase/authentication"
   );
-  const result = await FirebaseAuthentication.signInWithGoogle();
+  if (provider === "google") {
+    const result = await FirebaseAuthentication.signInWithGoogle();
+    const idToken = result.credential?.idToken;
+    if (!idToken) throw new Error("signin-cancelled");
+    return GoogleAuthProvider.credential(idToken, result.credential?.accessToken);
+  }
+  // Apple: the plugin generates + hashes the nonce; we replay the raw nonce.
+  const result = await FirebaseAuthentication.signInWithApple();
   const idToken = result.credential?.idToken;
-  const accessToken = result.credential?.accessToken;
-  if (!idToken) throw new Error("google-signin-cancelled");
-  return GoogleAuthProvider.credential(idToken, accessToken);
+  if (!idToken) throw new Error("signin-cancelled");
+  return new OAuthProvider("apple.com").credential({
+    idToken,
+    rawNonce: result.credential?.nonce,
+  });
+}
+
+/** Popup/redirect provider for the web sign-in path. */
+function webProvider(provider: SocialProvider): AuthProvider {
+  if (provider === "google") return new GoogleAuthProvider();
+  const apple = new OAuthProvider("apple.com");
+  apple.addScope("email");
+  apple.addScope("name");
+  return apple;
 }
 
 /** Normalise Firebase's link/credential collision codes. */
 function mapAuthError(err: unknown): Error {
   const code = (err as { code?: string }).code ?? "";
-  if (code.includes("credential-already-in-use") || code.includes("email-already-in-use")) {
+  if (
+    code.includes("credential-already-in-use") ||
+    code.includes("email-already-in-use")
+  ) {
     return new Error("credential-in-use");
   }
   return err instanceof Error ? err : new Error(String(err));
+}
+
+async function socialSignIn(provider: SocialProvider): Promise<AuthUser> {
+  const auth = getFirebaseAuth();
+  const credential = await nativeCredential(provider);
+  if (credential) {
+    const cred = await signInWithCredential(auth, credential);
+    return toAuthUser(cred.user);
+  }
+  const provFn = webProvider(provider);
+  try {
+    const cred = await signInWithPopup(auth, provFn);
+    return toAuthUser(cred.user);
+  } catch (err: unknown) {
+    // Popup-blocked environments (some WebViews) fall back to redirect;
+    // the result arrives through onAuthStateChanged after reload.
+    const code = (err as { code?: string }).code ?? "";
+    if (code.includes("popup")) {
+      await signInWithRedirect(auth, provFn);
+    }
+    throw err;
+  }
+}
+
+async function socialLink(provider: SocialProvider): Promise<AuthUser> {
+  const auth = getFirebaseAuth();
+  const user = auth.currentUser;
+  if (!user) throw new Error("no-current-user");
+  try {
+    const credential = await nativeCredential(provider);
+    const result = credential
+      ? await linkWithCredential(user, credential)
+      : await linkWithPopup(user, webProvider(provider));
+    return toAuthUser(result.user);
+  } catch (err) {
+    throw mapAuthError(err);
+  }
 }
 
 /**
@@ -115,45 +177,13 @@ export function createFirebaseServices(): BackendServices {
           cb(u ? toAuthUser(u) : null),
         );
       },
-      async signInWithGoogle() {
-        const auth = getFirebaseAuth();
-        const nativeCredential = await nativeGoogleCredential();
-        if (nativeCredential) {
-          const cred = await signInWithCredential(auth, nativeCredential);
-          return toAuthUser(cred.user);
-        }
-        const provider = new GoogleAuthProvider();
-        try {
-          const cred = await signInWithPopup(auth, provider);
-          return toAuthUser(cred.user);
-        } catch (err: unknown) {
-          // Popup-blocked environments (some WebViews) fall back to redirect;
-          // the result arrives through onAuthStateChanged after reload.
-          const code = (err as { code?: string }).code ?? "";
-          if (code.includes("popup")) {
-            await signInWithRedirect(auth, provider);
-          }
-          throw err;
-        }
-      },
+      signInWithGoogle: () => socialSignIn("google"),
+      signInWithApple: () => socialSignIn("apple"),
       async signInAsGuest() {
         const cred = await signInAnonymously(getFirebaseAuth());
         return toAuthUser(cred.user);
       },
-      async linkGoogle() {
-        const auth = getFirebaseAuth();
-        const user = auth.currentUser;
-        if (!user) throw new Error("no-current-user");
-        try {
-          const nativeCredential = await nativeGoogleCredential();
-          const result = nativeCredential
-            ? await linkWithCredential(user, nativeCredential)
-            : await linkWithPopup(user, new GoogleAuthProvider());
-          return toAuthUser(result.user);
-        } catch (err) {
-          throw mapAuthError(err);
-        }
-      },
+      linkProvider: (provider) => socialLink(provider),
       async signOutUser() {
         if (isNative()) {
           const { FirebaseAuthentication } = await import(

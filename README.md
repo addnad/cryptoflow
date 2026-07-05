@@ -67,13 +67,33 @@ npm run build      # static export (out/)
 ```bash
 npm run build
 npx cap add ios && npx cap add android   # first time
+npx capacitor-assets generate            # icons + splash from resources/
 npx cap sync
 npx cap open ios      # Xcode → archive
 npx cap open android  # Android Studio → bundle
 ```
 
-Portrait orientation, safe-area aware, haptics via `@capacitor/haptics`,
-hardware back mapped to in-app navigation.
+Brand source art lives in `resources/` (`icon.png` 1024², `splash.png` /
+`splash-dark.png` 2732²); `capacitor-assets` fans these out to every
+platform density. Portrait orientation, safe-area aware, haptics via
+`@capacitor/haptics`, hardware back mapped to in-app navigation, and the run
+auto-pauses when the app is backgrounded.
+
+### Sign-in providers
+
+Google and Apple both work on web (popup/redirect) and native (via
+`@capacitor-firebase/authentication`, which returns a credential the Firebase
+JS SDK consumes). Guests can upgrade to either provider in place from the
+profile — the uid is preserved so all progress carries over. To enable them:
+
+- **Firebase console:** turn on Google, Apple and Anonymous providers.
+- **iOS:** add the *Sign in with Apple* capability in Xcode; configure the
+  Google reversed-client-id URL scheme.
+- **Android:** drop in `google-services.json` and register the SHA-1.
+
+Store metadata and the privacy policy live in
+[`docs/STORE_LISTING.md`](docs/STORE_LISTING.md) and
+[`docs/PRIVACY.md`](docs/PRIVACY.md).
 
 ## Project layout
 

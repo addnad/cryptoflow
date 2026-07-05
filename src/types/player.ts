@@ -1,6 +1,9 @@
 /** Identity providers supported now + reserved for the future. */
 export type AuthProviderId = "google" | "guest" | "apple";
 
+/** Social providers a guest can sign in with or upgrade to. */
+export type SocialProvider = "google" | "apple";
+
 export interface AuthUser {
   uid: string;
   provider: AuthProviderId;
