@@ -1,0 +1,48 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // Player profiles: readable by any signed-in player (leaderboard
+    // hydration), writable only by their owner.
+    match /players/{uid} {
+      allow read: if signedIn();
+      allow create, update: if isOwner(uid);
+
+      match /runs/{runId} {
+        allow read, create: if isOwner(uid);
+      }
+      match /meta/{doc} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    // Username reservations: one document per handle, claimed atomically
+    // together with profile creation. Owners may release their own handle.
+    match /usernames/{name} {
+      allow read: if true;
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
+    // Leaderboards: world-readable; entries writable only by their owner
+    // and only with sane values. Cloud Functions re-validate asynchronously.
+    match /leaderboards/{board}/entries/{uid} {
+      allow read: if true;
+      allow write: if isOwner(uid)
+        && request.resource.data.score is number
+        && request.resource.data.score >= 0
+        && request.resource.data.score < 100000000;
+    }
+
+    match /rewards/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+  }
+}
